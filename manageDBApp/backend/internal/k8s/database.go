@@ -165,7 +165,7 @@ func (c *Client) CreateDatabaseCluster(ctx context.Context, req *types.CreateDat
 	return err
 }
 
-func (c *Client) GetDatabaseClusters(namespace string) ([]types.DBClusterInfo, error) {
+func (c *Client) ListDatabaseClusters(namespace string) ([]types.DBClusterInfo, error) {
 	clusters, err := c.DynamicClient.Resource(DatabaseClusterGVR).Namespace(namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err

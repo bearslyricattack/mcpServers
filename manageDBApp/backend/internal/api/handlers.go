@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"log"
 	"mcp-db/pkg/types"
 	"net/http"
 )
 
-// CreateDatabase 处理创建数据库的请求
 func (s *Server) CreateDatabase(w http.ResponseWriter, r *http.Request) {
 	var req types.CreateDatabaseRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -55,25 +55,21 @@ func (s *Server) CreateDatabase(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// GetDatabases 处理获取数据库列表的请求
-func (s *Server) GetDatabases(w http.ResponseWriter, r *http.Request) {
-	var req types.GetDatabasesRequest
+func (s *Server) ListDatabases(w http.ResponseWriter, r *http.Request) {
+	var req types.ListDatabasesRequest
 	if r.Method == http.MethodPost {
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			respondWithError(w, http.StatusBadRequest, "Invalid request format")
 			return
 		}
 	} else {
-		// 提取查询参数
 		req.Namespace = r.URL.Query().Get("namespace")
 		req.Type = r.URL.Query().Get("type")
-		req.Token = r.URL.Query().Get("token")
 	}
-
 	if req.Namespace == "" {
 		respondWithError(w, http.StatusBadRequest, "Not Found namespace")
 	}
-	clusters, err := s.k8sClient.GetDatabaseClusters(req.Namespace)
+	clusters, err := s.k8sClient.ListDatabaseClusters(req.Namespace)
 	if err != nil {
 		log.Printf("Failed to get database clusters: %v", err)
 		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to get database clusters: %v", err))
@@ -86,7 +82,6 @@ func (s *Server) GetDatabases(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// DeleteDatabase 处理删除数据库的请求
 func (s *Server) DeleteDatabase(w http.ResponseWriter, r *http.Request) {
 	var req types.DeleteDatabaseRequest
 
@@ -118,6 +113,51 @@ func (s *Server) DeleteDatabase(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, types.Response{
 		Success: true,
 		Message: fmt.Sprintf("Successfully deleted database cluster '%s'", req.Name),
+	})
+}
+
+func (s *Server) GetDatabaseConn(w http.ResponseWriter, r *http.Request) {
+	var req types.GetDatabasesRequest
+	if r.Method == http.MethodPost {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			respondWithError(w, http.StatusBadRequest, "Invalid request format")
+			return
+		}
+	} else {
+		req.Namespace = r.URL.Query().Get("namespace")
+		req.Database = r.URL.Query().Get("database")
+	}
+	if req.Namespace == "" {
+		respondWithError(w, http.StatusBadRequest, "Not Found namespace")
+	}
+	if req.Database == "" {
+		respondWithError(w, http.StatusBadRequest, "Not Found database")
+	}
+	secretName := fmt.Sprintf("%s-conn-credential", req.Database)
+	secret, err := s.k8sClient.ClientSet.CoreV1().Secrets(req.Namespace).Get(context.TODO(), secretName, metav1.GetOptions{})
+	if err != nil {
+		log.Fatalf("Failed to get Secret: %v", err)
+	}
+
+	var res types.DatabasesResponse
+	for key, value := range secret.Data {
+		if key == "username" {
+			res.Username = string(value)
+		}
+		if key == "password" {
+			res.Password = string(value)
+		}
+		if key == "host" {
+			res.Address = fmt.Sprintf("%s.%s.svc", string(value), req.Namespace)
+		}
+		if key == "port" {
+			res.Port = string(value)
+		}
+	}
+	respondWithJSON(w, http.StatusOK, types.Response{
+		Success: true,
+		Message: fmt.Sprintf("Found database connect clusters in namespace '%s'", req.Namespace),
+		Data:    res,
 	})
 }
 

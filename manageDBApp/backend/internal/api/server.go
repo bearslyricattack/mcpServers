@@ -21,10 +21,11 @@ func NewServer(client *k8s.Client) *Server {
 }
 
 func (s *Server) setupRoutes() {
-	api := s.router.PathPrefix("/api").Subrouter()
-	api.HandleFunc("/databases", s.GetDatabases).Methods(http.MethodGet, http.MethodPost)
-	api.HandleFunc("/databases/create", s.CreateDatabase).Methods(http.MethodPost)
-	api.HandleFunc("/databases/delete", s.DeleteDatabase).Methods(http.MethodDelete, http.MethodPost)
+	api := s.router.PathPrefix("/databases").Subrouter()
+	api.HandleFunc("/list", s.ListDatabases).Methods(http.MethodGet, http.MethodPost)
+	api.HandleFunc("/create", s.CreateDatabase).Methods(http.MethodPost)
+	api.HandleFunc("/delete", s.DeleteDatabase).Methods(http.MethodDelete, http.MethodPost)
+	api.HandleFunc("/connect", s.GetDatabaseConn).Methods(http.MethodGet)
 
 }
 
