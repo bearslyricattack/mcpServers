@@ -12,14 +12,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-// DatabaseClusterGVR 定义了数据库集群的GroupVersionResource
 var DatabaseClusterGVR = schema.GroupVersionResource{
 	Group:    "apps.kubeblocks.io",
 	Version:  "v1alpha1",
 	Resource: "clusters",
 }
 
-// DatabaseConfigs 存储了不同数据库类型的配置信息
 var DatabaseConfigs = map[string]struct {
 	Definition string
 	Version    string
@@ -57,7 +55,6 @@ var DatabaseConfigs = map[string]struct {
 	},
 }
 
-// DefaultVersions 存储了不同数据库类型的默认版本
 var DefaultVersions = map[string]string{
 	"postgresql": "14.8.0",
 	"mysql":      "8.0.30-1",
@@ -67,15 +64,12 @@ var DefaultVersions = map[string]string{
 	"milvus":     "2.4.5",
 }
 
-// CreateDatabaseCluster 创建一个新的数据库集群
 func (c *Client) CreateDatabaseCluster(ctx context.Context, req *types.CreateDatabaseRequest) error {
-	// 检查数据库类型是否支持
 	dbConfig, ok := DatabaseConfigs[req.Type]
 	if !ok {
 		return fmt.Errorf("unsupported database type: %s", req.Type)
 	}
 
-	// 使用用户提供的版本或默认版本
 	version := req.Version
 	if version == "" {
 		if defaultVer, ok := DefaultVersions[req.Type]; ok {
@@ -85,26 +79,19 @@ func (c *Client) CreateDatabaseCluster(ctx context.Context, req *types.CreateDat
 		}
 	}
 
-	// 格式化版本字符串
 	formattedVersion := fmt.Sprintf(dbConfig.Version, version)
 
-	// 创建RBAC资源
 	if err := c.CreateServiceAccount(ctx, req.Name, req.Namespace); err != nil {
 		return fmt.Errorf("failed to create ServiceAccount: %w", err)
 	}
-
 	if err := c.CreateRole(ctx, req.Name, req.Namespace); err != nil {
 		return fmt.Errorf("failed to create Role: %w", err)
 	}
-
 	if err := c.CreateRoleBinding(ctx, req.Name, req.Namespace); err != nil {
 		return fmt.Errorf("failed to create RoleBinding: %w", err)
 	}
 
-	// 等待ServiceAccount的token生成
 	time.Sleep(1 * time.Second)
-
-	// 创建数据库集群的unstructured对象
 	cluster := &unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": "apps.kubeblocks.io/v1alpha1",
@@ -174,57 +161,30 @@ func (c *Client) CreateDatabaseCluster(ctx context.Context, req *types.CreateDat
 			},
 		},
 	}
-
-	// 创建集群
-	_, err := c.DynamicClient.
-		Resource(DatabaseClusterGVR).
-		Namespace(req.Namespace).
-		Create(ctx, cluster, metav1.CreateOptions{})
-
+	_, err := c.DynamicClient.Resource(DatabaseClusterGVR).Namespace(req.Namespace).Create(ctx, cluster, metav1.CreateOptions{})
 	return err
 }
 
-// GetDatabaseClusters 获取指定命名空间中的数据库集群列表
-func (c *Client) GetDatabaseClusters(ctx context.Context, namespace, dbType string) ([]types.DBClusterInfo, error) {
-	// 获取集群列表
-	clusters, err := c.DynamicClient.
-		Resource(DatabaseClusterGVR).
-		Namespace(namespace).
-		List(ctx, metav1.ListOptions{})
-
+func (c *Client) GetDatabaseClusters(namespace string) ([]types.DBClusterInfo, error) {
+	clusters, err := c.DynamicClient.Resource(DatabaseClusterGVR).Namespace(namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
-
 	result := make([]types.DBClusterInfo, 0)
-
 	for _, cluster := range clusters.Items {
-		// 提取元数据
 		metadata, found, err := unstructured.NestedMap(cluster.Object, "metadata")
 		if err != nil || !found {
 			log.Printf("Failed to get metadata for cluster: %v", err)
 			continue
 		}
-
 		name, _ := metadata["name"].(string)
 		creationTimestamp, _ := metadata["creationTimestamp"].(string)
-
-		// 获取标签
 		labels, found, _ := unstructured.NestedMap(metadata, "labels")
 		if !found {
 			labels = map[string]interface{}{}
 		}
-
-		// 提取定义类型
 		definitionType, _ := labels["clusterdefinition.kubeblocks.io/name"].(string)
 		versionString, _ := labels["clusterversion.kubeblocks.io/name"].(string)
-
-		// 按类型过滤
-		if dbType != "" && definitionType != dbType {
-			continue
-		}
-
-		// 提取状态
 		status := "Unknown"
 		statusObj, found, _ := unstructured.NestedMap(cluster.Object, "status")
 		if found {
@@ -232,17 +192,11 @@ func (c *Client) GetDatabaseClusters(ctx context.Context, namespace, dbType stri
 				status = phase
 			}
 		}
-
-		// 提取规格详情
 		spec, found, _ := unstructured.NestedMap(cluster.Object, "spec")
 		if !found {
 			spec = map[string]interface{}{}
 		}
-
-		// 提取组件规格
 		componentSpecsUntyped, found, _ := unstructured.NestedSlice(spec, "componentSpecs")
-
-		// 默认值
 		cpuLimit := ""
 		memLimit := ""
 		cpuRequest := ""
@@ -251,12 +205,9 @@ func (c *Client) GetDatabaseClusters(ctx context.Context, namespace, dbType stri
 		accessMode := ""
 		var replicas int64 = 0
 		serviceAccount := ""
-
 		if found && len(componentSpecsUntyped) > 0 {
-			// 获取第一个组件
 			mainComponent, ok := componentSpecsUntyped[0].(map[string]interface{})
 			if ok {
-				// 获取资源
 				resources, found, _ := unstructured.NestedMap(mainComponent, "resources")
 				if found {
 					limits, limitsFound, _ := unstructured.NestedMap(resources, "limits")
@@ -280,26 +231,19 @@ func (c *Client) GetDatabaseClusters(ctx context.Context, namespace, dbType stri
 					}
 				}
 
-				// 获取副本数
 				if rep, ok := mainComponent["replicas"].(int64); ok {
 					replicas = rep
 				}
-
-				// 获取服务账号
 				if sa, ok := mainComponent["serviceAccountName"].(string); ok {
 					serviceAccount = sa
 				}
-
-				// 获取卷声明模板
 				volumeTemplates, found, _ := unstructured.NestedSlice(mainComponent, "volumeClaimTemplates")
 				if found && len(volumeTemplates) > 0 {
-					// 寻找数据卷
 					for _, volUntyped := range volumeTemplates {
 						vol, ok := volUntyped.(map[string]interface{})
 						if !ok {
 							continue
 						}
-
 						volName, _ := vol["name"].(string)
 						if volName == "data" {
 							spec, specFound, _ := unstructured.NestedMap(vol, "spec")
@@ -313,21 +257,17 @@ func (c *Client) GetDatabaseClusters(ctx context.Context, namespace, dbType stri
 										}
 									}
 								}
-
 								accessModes, modesFound, _ := unstructured.NestedStringSlice(spec, "accessModes")
 								if modesFound && len(accessModes) > 0 {
 									accessMode = accessModes[0]
 								}
 							}
-
 							break
 						}
 					}
 				}
 			}
 		}
-
-		// 创建集群信息
 		clusterInfo := types.DBClusterInfo{
 			Name:           name,
 			Type:           definitionType,
@@ -344,13 +284,12 @@ func (c *Client) GetDatabaseClusters(ctx context.Context, namespace, dbType stri
 			ServiceAccount: serviceAccount,
 		}
 
+		fmt.Println(clusterInfo)
 		result = append(result, clusterInfo)
 	}
-
 	return result, nil
 }
 
-// DeleteDatabaseCluster 删除指定的数据库集群
 func (c *Client) DeleteDatabaseCluster(ctx context.Context, name, namespace string) error {
 	return c.DynamicClient.
 		Resource(DatabaseClusterGVR).

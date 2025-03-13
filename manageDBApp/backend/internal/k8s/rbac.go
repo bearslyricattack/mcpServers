@@ -19,7 +19,6 @@ func (c *Client) CreateServiceAccount(ctx context.Context, name, namespace strin
 			},
 		},
 	}
-
 	_, err := c.ClientSet.CoreV1().ServiceAccounts(namespace).Create(ctx, sa, metav1.CreateOptions{})
 	return err
 }

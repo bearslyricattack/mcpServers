@@ -17,19 +17,17 @@ func (s *Server) CreateDatabase(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 验证请求
 	if req.Name == "" {
 		respondWithError(w, http.StatusBadRequest, "Database name is required")
 		return
 	}
-
-	// 设置默认值
 	if req.Type == "" {
-		req.Type = "postgresql"
+		respondWithError(w, http.StatusBadRequest, "Database type is required")
 	}
 	if req.Namespace == "" {
-		req.Namespace = s.config.DefaultNamespace
+		respondWithError(w, http.StatusBadRequest, "Namespace is required")
 	}
+
 	if req.CPULimit == "" {
 		req.CPULimit = "1000m"
 	}
@@ -45,15 +43,12 @@ func (s *Server) CreateDatabase(w http.ResponseWriter, r *http.Request) {
 	if req.Storage == "" {
 		req.Storage = "3Gi"
 	}
-
-	// 创建数据库集群
 	ctx := context.Background()
 	if err := s.k8sClient.CreateDatabaseCluster(ctx, &req); err != nil {
 		log.Printf("Failed to create database cluster: %v", err)
 		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to create database cluster: %v", err))
 		return
 	}
-
 	respondWithJSON(w, http.StatusCreated, types.Response{
 		Success: true,
 		Message: fmt.Sprintf("Successfully created database cluster '%s'", req.Name),
@@ -63,7 +58,6 @@ func (s *Server) CreateDatabase(w http.ResponseWriter, r *http.Request) {
 // GetDatabases 处理获取数据库列表的请求
 func (s *Server) GetDatabases(w http.ResponseWriter, r *http.Request) {
 	var req types.GetDatabasesRequest
-
 	if r.Method == http.MethodPost {
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			respondWithError(w, http.StatusBadRequest, "Invalid request format")
@@ -76,20 +70,15 @@ func (s *Server) GetDatabases(w http.ResponseWriter, r *http.Request) {
 		req.Token = r.URL.Query().Get("token")
 	}
 
-	// 设置默认命名空间
 	if req.Namespace == "" {
-		req.Namespace = s.config.DefaultNamespace
+		respondWithError(w, http.StatusBadRequest, "Not Found namespace")
 	}
-
-	// 获取数据库集群
-	ctx := context.Background()
-	clusters, err := s.k8sClient.GetDatabaseClusters(ctx, req.Namespace, req.Type)
+	clusters, err := s.k8sClient.GetDatabaseClusters(req.Namespace)
 	if err != nil {
 		log.Printf("Failed to get database clusters: %v", err)
 		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to get database clusters: %v", err))
 		return
 	}
-
 	respondWithJSON(w, http.StatusOK, types.Response{
 		Success: true,
 		Message: fmt.Sprintf("Found %d database clusters in namespace '%s'", len(clusters), req.Namespace),
@@ -119,12 +108,6 @@ func (s *Server) DeleteDatabase(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 设置默认命名空间
-	if req.Namespace == "" {
-		req.Namespace = s.config.DefaultNamespace
-	}
-
-	// 删除数据库集群
 	ctx := context.Background()
 	if err := s.k8sClient.DeleteDatabaseCluster(ctx, req.Name, req.Namespace); err != nil {
 		log.Printf("Failed to delete database cluster: %v", err)
@@ -138,7 +121,6 @@ func (s *Server) DeleteDatabase(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// respondWithJSON 帮助函数，用于发送JSON响应
 func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
@@ -148,7 +130,6 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	}
 }
 
-// respondWithError 帮助函数，用于发送错误响应
 func respondWithError(w http.ResponseWriter, code int, message string) {
 	respondWithJSON(w, code, types.Response{
 		Success: false,
