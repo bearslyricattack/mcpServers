@@ -18,7 +18,6 @@ const stdio_js_1 = require("@modelcontextprotocol/sdk/server/stdio.js");
 const types_js_1 = require("@modelcontextprotocol/sdk/types.js");
 const http_1 = __importDefault(require("http"));
 const API_BASE_URL = "http://localhost:8080/databases";
-// 添加类型定义
 function httpRequest(url, options, data = null) {
     return new Promise((resolve, reject) => {
         const req = http_1.default.request(url, options, (res) => {
@@ -87,6 +86,30 @@ server.setRequestHandler(types_js_1.ListToolsRequestSchema, () => __awaiter(void
                         }
                     }
                 }
+            },
+            {
+                name: "get_database_connection",
+                description: "获取指定数据库集群的连接信息。",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        name: { type: "string", description: "数据库集群名称" },
+                        namespace: { type: "string", description: "部署的命名空间", default: "default" }
+                    },
+                    required: ["name", "namespace"]
+                }
+            },
+            {
+                name: "delete_database",
+                description: "删除指定的数据库集群。",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        name: { type: "string", description: "数据库集群名称" },
+                        namespace: { type: "string", description: "部署的命名空间", default: "default" }
+                    },
+                    required: ["name", "namespace"]
+                }
             }
         ],
     };
@@ -113,6 +136,35 @@ server.setRequestHandler(types_js_1.CallToolRequestSchema, (request) => __awaite
         const { namespace, type } = args;
         const url = `${API_BASE_URL}/list?namespace=${namespace}&type=${type || ''}`;
         const result = yield httpRequest(url, { method: "GET" }, null);
+        return {
+            content: [
+                {
+                    type: "text",
+                    text: JSON.stringify(result, null, 2)
+                }
+            ]
+        };
+    }
+    else if (request.params.name === "get_database_connection") {
+        const args = request.params.arguments;
+        const { name, namespace } = args;
+        const result = yield httpRequest(`${API_BASE_URL}/connect?name=${name}&namespace=${namespace}`, { method: "GET" }, null);
+        return {
+            content: [
+                {
+                    type: "text",
+                    text: JSON.stringify(result, null, 2)
+                }
+            ]
+        };
+    }
+    else if (request.params.name === "delete_database") {
+        const args = request.params.arguments;
+        const { name, namespace } = args;
+        const result = yield httpRequest(`${API_BASE_URL}/delete`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" }
+        }, JSON.stringify({ name, namespace }));
         return {
             content: [
                 {

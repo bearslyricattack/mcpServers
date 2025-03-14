@@ -8,6 +8,7 @@ import (
 	"log"
 	"mcp-db/pkg/types"
 	"net/http"
+	"strings"
 )
 
 func (s *Server) CreateDatabase(w http.ResponseWriter, r *http.Request) {
@@ -125,7 +126,7 @@ func (s *Server) GetDatabaseConn(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		req.Namespace = r.URL.Query().Get("namespace")
-		req.Database = r.URL.Query().Get("database")
+		req.Database = r.URL.Query().Get("name")
 	}
 	if req.Namespace == "" {
 		respondWithError(w, http.StatusBadRequest, "Not Found namespace")
@@ -140,6 +141,7 @@ func (s *Server) GetDatabaseConn(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var res types.DatabasesResponse
+	var dbType string
 	for key, value := range secret.Data {
 		if key == "username" {
 			res.Username = string(value)
@@ -148,16 +150,18 @@ func (s *Server) GetDatabaseConn(w http.ResponseWriter, r *http.Request) {
 			res.Password = string(value)
 		}
 		if key == "host" {
+			dbType = strings.SplitN(string(value), "-", 2)[1]
 			res.Address = fmt.Sprintf("%s.%s.svc", string(value), req.Namespace)
 		}
 		if key == "port" {
 			res.Port = string(value)
 		}
 	}
+	var dsn = fmt.Sprintf("%s://%s:%s@%s:%s", dbType, res.Username, res.Password, res.Address, res.Port)
 	respondWithJSON(w, http.StatusOK, types.Response{
 		Success: true,
 		Message: fmt.Sprintf("Found database connect clusters in namespace '%s'", req.Namespace),
-		Data:    res,
+		Data:    dsn,
 	})
 }
 

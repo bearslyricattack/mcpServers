@@ -10,7 +10,6 @@ import http from "http";
 
 const API_BASE_URL = "http://localhost:8080/databases";
 
-// 添加类型定义
 function httpRequest(
   url: string, 
   options: http.RequestOptions, 
@@ -62,6 +61,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       default: "postgresql"
     }
   };
+
   return {
     tools: [
       {
@@ -89,10 +89,35 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             }
           }
         }
+      },
+      {
+        name: "get_database_connection",
+        description: "获取指定数据库集群的连接信息。",
+        inputSchema: {
+          type: "object",
+          properties: {
+            name: { type: "string", description: "数据库集群名称" },
+            namespace: { type: "string", description: "部署的命名空间", default: "default" }
+          },
+          required: ["name", "namespace"]
+        }
+      },
+      {
+        name: "delete_database",
+        description: "删除指定的数据库集群。",
+        inputSchema: {
+          type: "object",
+          properties: {
+            name: { type: "string", description: "数据库集群名称" },
+            namespace: { type: "string", description: "部署的命名空间", default: "default" }
+          },
+          required: ["name", "namespace"]
+        }
       }
     ],
   };
 });
+
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   if (request.params.name === "create_database") {
@@ -139,10 +164,57 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }
       ]
     };
+  } 
+  else if (request.params.name === "get_database_connection") {
+    const args = request.params.arguments as {
+      name: string;
+      namespace: string;
+    };
+    const { name, namespace } = args;
+    
+    const result = await httpRequest(
+      `${API_BASE_URL}/connect?name=${name}&namespace=${namespace}`,
+      { method: "GET" },
+      null
+    );
+    
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(result, null, 2)
+        }
+      ]
+    };
+  } 
+  else if (request.params.name === "delete_database") {
+    const args = request.params.arguments as {
+      name: string;
+      namespace: string;
+    };
+    const { name, namespace } = args;
+    
+    const result = await httpRequest(
+      `${API_BASE_URL}/delete`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      },
+      JSON.stringify({ name, namespace })
+    );
+    
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(result, null, 2)
+        }
+      ]
+    };
   }
-
   throw new Error(`未知工具: ${request.params.name}`);
 });
+
 
 async function runServer() {
   try {

@@ -23,6 +23,7 @@ func (s *Server) CreateDatabaseHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "请求格式错误", http.StatusBadRequest)
 		return
 	}
+
 	if err := database.CreateDatabase(req.DSN, req.DBName); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
