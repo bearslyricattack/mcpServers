@@ -1,16 +1,19 @@
 package api
 
 import (
+	"fmt"
 	"github.com/gorilla/mux"
 	"net/http"
 )
 
 type Server struct {
+	port   string
 	router *mux.Router
 }
 
-func NewServer() *Server {
+func NewServer(port string) *Server {
 	server := &Server{
+		port:   port,
 		router: mux.NewRouter(),
 	}
 	server.setupRoutes()
@@ -24,5 +27,5 @@ func (s *Server) setupRoutes() {
 }
 
 func (s *Server) Start() error {
-	return http.ListenAndServe(":8080", s.router)
+	return http.ListenAndServe(fmt.Sprintf(":%s", s.port), s.router)
 }

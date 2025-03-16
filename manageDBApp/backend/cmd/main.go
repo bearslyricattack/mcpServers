@@ -8,7 +8,6 @@ import (
 )
 
 func main() {
-	// 定义命令行参数
 	var (
 		kubeconfigPath string
 	)
