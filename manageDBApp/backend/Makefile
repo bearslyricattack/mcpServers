@@ -1,5 +1,5 @@
-#IMG ?= ghcr.io/labring/service-managerDBApp:latest
-IMG ?= bearslyricattack/service-managerDBApp:latest
+#IMG ?= ghcr.io/labring/service-managerdbapp:latest
+IMG ?= bearslyricattack/service-managerdbapp:latest
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -48,7 +48,7 @@ build: clean ## Build service-hub binary.
 
 .PHONY: docker-build
 docker-build: build
-	mv bin/manager bin/service-managerDBApp-${TARGETARCH}
+	mv bin/manager bin/service-managerdbapp-${TARGETARCH}
 	docker build -t $(IMG) .
 
 .PHONY: docker-push
