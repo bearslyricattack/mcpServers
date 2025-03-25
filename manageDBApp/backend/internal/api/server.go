@@ -9,12 +9,14 @@ import (
 type Server struct {
 	router    *mux.Router
 	k8sClient *k8s.Client
+	addr      string
 }
 
-func NewServer(client *k8s.Client) *Server {
+func NewServer(client *k8s.Client, addr string) *Server {
 	server := &Server{
 		router:    mux.NewRouter(),
 		k8sClient: client,
+		addr:      addr,
 	}
 	server.setupRoutes()
 	return server
@@ -26,9 +28,8 @@ func (s *Server) setupRoutes() {
 	api.HandleFunc("/create", s.CreateDatabase).Methods(http.MethodPost)
 	api.HandleFunc("/delete", s.DeleteDatabase).Methods(http.MethodDelete, http.MethodPost)
 	api.HandleFunc("/connect", s.GetDatabaseConn).Methods(http.MethodGet)
-
 }
 
 func (s *Server) Start() error {
-	return http.ListenAndServe(":8080", s.router)
+	return http.ListenAndServe(s.addr, s.router)
 }
