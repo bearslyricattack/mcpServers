@@ -2,20 +2,20 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: service-managerDBApp
-  name: service-managerDBApp-deployment
+    app: service-manager-dbapp
+  name: service-manager-dbapp-deployment
   namespace: sealos
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: service-managerDBApp
+      app: service-manager-dbapp
   strategy:
     type: Recreate
   template:
     metadata:
       labels:
-        app: service-managerDBApp
+        app: service-manager-dbapp
     spec:
       containers:
         - command:
@@ -60,8 +60,8 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
-    app: service-managerDBApp
-  name: service-managerDBApp
+    app: service-manager-dbapp
+  name: service-manager-dbapp
   namespace: sealos
 spec:
   ports:
@@ -70,4 +70,4 @@ spec:
       protocol: TCP
       targetPort: 8429
   selector:
-    app: service-managerDBApp
+    app: service-manager-dbapp
