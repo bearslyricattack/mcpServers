@@ -8,7 +8,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import http from "http";
 
-const API_BASE_URL = "http://localhost:8080/databases";
+const API_BASE_URL = "http://192.168.10.35:30807/databases";
 
 function httpRequest(
   url: string, 
