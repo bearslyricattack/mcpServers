@@ -17,7 +17,7 @@ const index_js_1 = require("@modelcontextprotocol/sdk/server/index.js");
 const stdio_js_1 = require("@modelcontextprotocol/sdk/server/stdio.js");
 const types_js_1 = require("@modelcontextprotocol/sdk/types.js");
 const http_1 = __importDefault(require("http"));
-const API_BASE_URL = "http://192.168.10.35:30807/databases";
+const API_BASE_URL = "http://192.168.10.33:31853/databases";
 function httpRequest(url, options, data = null) {
     return new Promise((resolve, reject) => {
         const req = http_1.default.request(url, options, (res) => {
@@ -117,11 +117,11 @@ server.setRequestHandler(types_js_1.ListToolsRequestSchema, () => __awaiter(void
 server.setRequestHandler(types_js_1.CallToolRequestSchema, (request) => __awaiter(void 0, void 0, void 0, function* () {
     if (request.params.name === "create_database") {
         const args = request.params.arguments;
-        const { name, type, namespace } = args;
+        const { name, type, namespace, kubeconfig } = args;
         const result = yield httpRequest(`${API_BASE_URL}/create`, {
             method: "POST",
             headers: { "Content-Type": "application/json" }
-        }, JSON.stringify({ name, type, namespace }));
+        }, JSON.stringify({ name, type, namespace, kubeconfig, }));
         return {
             content: [
                 {
@@ -133,8 +133,8 @@ server.setRequestHandler(types_js_1.CallToolRequestSchema, (request) => __awaite
     }
     else if (request.params.name === "get_database_clusters") {
         const args = request.params.arguments;
-        const { namespace, type } = args;
-        const url = `${API_BASE_URL}/list?namespace=${namespace}&type=${type || ''}`;
+        const { namespace, type, kubeconfig } = args;
+        const url = `${API_BASE_URL}/list?namespace=${namespace}&type=${type || ''}&kubeconfig=${kubeconfig}`;
         const result = yield httpRequest(url, { method: "GET" }, null);
         return {
             content: [
@@ -148,7 +148,7 @@ server.setRequestHandler(types_js_1.CallToolRequestSchema, (request) => __awaite
     else if (request.params.name === "get_database_connection") {
         const args = request.params.arguments;
         const { name, namespace } = args;
-        const result = yield httpRequest(`${API_BASE_URL}/connect?name=${name}&namespace=${namespace}`, { method: "GET" }, null);
+        const result = yield httpRequest(`${API_BASE_URL}/connect?name=${name}&namespace=${namespace}&kubeconfig=${args.kubeconfig}`, { method: "GET" }, null);
         return {
             content: [
                 {
@@ -160,11 +160,11 @@ server.setRequestHandler(types_js_1.CallToolRequestSchema, (request) => __awaite
     }
     else if (request.params.name === "delete_database") {
         const args = request.params.arguments;
-        const { name, namespace } = args;
+        const { name, namespace, kubeconfig } = args;
         const result = yield httpRequest(`${API_BASE_URL}/delete`, {
             method: "POST",
             headers: { "Content-Type": "application/json" }
-        }, JSON.stringify({ name, namespace }));
+        }, JSON.stringify({ name, namespace, kubeconfig }));
         return {
             content: [
                 {

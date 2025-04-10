@@ -127,7 +127,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       namespace: string;
       kubeconfig: string;
     };
-    const { name, type, namespace } = args;
+    const { name, type, namespace,kubeconfig} = args;
     
     const result = await httpRequest(
       `${API_BASE_URL}/create`,
@@ -135,7 +135,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         method: "POST",
         headers: { "Content-Type": "application/json" }
       },
-      JSON.stringify({ name, type, namespace })
+      JSON.stringify({ name, type, namespace,kubeconfig, })
     );
     
     return {
@@ -153,8 +153,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       type?: string 
       kubeconfig: string;
     };
-    const { namespace, type } = args;
-    const url = `${API_BASE_URL}/list?namespace=${namespace}&type=${type || ''}`;
+    const { namespace, type,kubeconfig } = args;
+    const url = `${API_BASE_URL}/list?namespace=${namespace}&type=${type || ''}&kubeconfig=${kubeconfig}`;
     const result = await httpRequest(url, { method: "GET" }, null);
     
     return {
@@ -175,7 +175,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, namespace } = args;
     
     const result = await httpRequest(
-      `${API_BASE_URL}/connect?name=${name}&namespace=${namespace}`,
+      `${API_BASE_URL}/connect?name=${name}&namespace=${namespace}&kubeconfig=${args.kubeconfig}`,
       { method: "GET" },
       null
     );
@@ -195,7 +195,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       namespace: string;
       kubeconfig: string;
     };
-    const { name, namespace } = args;
+    const { name, namespace,kubeconfig} = args;
     
     const result = await httpRequest(
       `${API_BASE_URL}/delete`,
@@ -203,7 +203,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         method: "POST",
         headers: { "Content-Type": "application/json" }
       },
-      JSON.stringify({ name, namespace })
+      JSON.stringify({ name, namespace,kubeconfig})
     );
     
     return {
