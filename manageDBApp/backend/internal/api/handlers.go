@@ -45,13 +45,13 @@ func (s *Server) CreateDatabase(w http.ResponseWriter, r *http.Request) {
 		req.Storage = "3Gi"
 	}
 	if req.Kubeconfig == "" {
-		respondWithError(w, http.StatusBadRequest, "Database name is required")
+		respondWithError(w, http.StatusBadRequest, "Kubeconfig is required")
 		return
 	}
 	var err error
 	s.k8sClient, err = k8s.NewClient(req.Kubeconfig)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "kubectl is error: "+err.Error())
+		respondWithError(w, http.StatusBadRequest, "Kubeconfig is error: "+err.Error())
 		return
 	}
 	ctx := context.Background()
@@ -60,6 +60,7 @@ func (s *Server) CreateDatabase(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to create database cluster: %v", err))
 		return
 	}
+	log.Println("Created database cluster successfully")
 	respondWithJSON(w, http.StatusCreated, types.Response{
 		Success: true,
 		Message: fmt.Sprintf("Successfully created database cluster '%s'", req.Name),
@@ -96,6 +97,7 @@ func (s *Server) ListDatabases(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to get database clusters: %v", err))
 		return
 	}
+	log.Println("List of database clusters successfully")
 	respondWithJSON(w, http.StatusOK, types.Response{
 		Success: true,
 		Message: fmt.Sprintf("Found %d database clusters in namespace '%s'", len(clusters), req.Namespace),
@@ -136,7 +138,7 @@ func (s *Server) DeleteDatabase(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to delete database cluster: %v", err))
 		return
 	}
-
+	log.Println("Deleted database cluster successfully")
 	respondWithJSON(w, http.StatusOK, types.Response{
 		Success: true,
 		Message: fmt.Sprintf("Successfully deleted database cluster '%s'", req.Name),
@@ -194,6 +196,7 @@ func (s *Server) GetDatabaseConn(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	var dsn = fmt.Sprintf("%s://%s:%s@%s:%s", dbType, res.Username, res.Password, res.Address, res.Port)
+	log.Println("found database connection successfully")
 	respondWithJSON(w, http.StatusOK, types.Response{
 		Success: true,
 		Message: fmt.Sprintf("Found database connect clusters in namespace '%s'", req.Namespace),
