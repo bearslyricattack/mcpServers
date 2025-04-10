@@ -21,7 +21,6 @@ spec:
         - command:
             - /manager
           args:
-            - "-kubeconfig=/config/kubeconfig"
             - "-port=8429"
           image: bearslyricattack/service-managerdbapp:latest
           imagePullPolicy: Always
@@ -44,17 +43,8 @@ spec:
             runAsNonRoot: true
           terminationMessagePath: /dev/termination-log
           terminationMessagePolicy: File
-          volumeMounts:
-            - mountPath: /config/kubeconfig
-              subPath: kubeconfig
-              name: kubeconfig-vol
       dnsPolicy: ClusterFirst
       restartPolicy: Always
-      volumes:
-        - name: kubeconfig-vol
-          configMap:
-            name: admin-kubeconfig
-            defaultMode: 420
 ---
 apiVersion: v1
 kind: Service
@@ -64,6 +54,7 @@ metadata:
   name: service-manager-dbapp
   namespace: sealos
 spec:
+  type: NodePort
   ports:
     - name: http
       port: 8429
