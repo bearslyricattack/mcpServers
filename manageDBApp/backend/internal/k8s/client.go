@@ -3,7 +3,9 @@ package k8s
 import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"log"
 )
 
 type Client struct {
@@ -11,10 +13,10 @@ type Client struct {
 	DynamicClient dynamic.Interface
 }
 
-func NewClient(path string) (*Client, error) {
-	cfg, err := clientcmd.BuildConfigFromFlags("", path)
+func NewClient(kubeconfig string) (*Client, error) {
+	cfg, err := NewConfigFromString(kubeconfig)
 	if err != nil {
-		return nil, err
+		log.Fatal(err)
 	}
 	clientSet, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
@@ -32,4 +34,12 @@ func NewClient(path string) (*Client, error) {
 		ClientSet:     clientSet,
 		DynamicClient: dynamicClient,
 	}, nil
+}
+
+func NewConfigFromString(kubeconfig string) (*rest.Config, error) {
+	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(kubeconfig))
+	if err != nil {
+		return nil, err
+	}
+	return config, nil
 }

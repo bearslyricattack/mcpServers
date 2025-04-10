@@ -12,11 +12,10 @@ type Server struct {
 	addr      string
 }
 
-func NewServer(client *k8s.Client, addr string) *Server {
+func NewServer(addr string) *Server {
 	server := &Server{
-		router:    mux.NewRouter(),
-		k8sClient: client,
-		addr:      addr,
+		router: mux.NewRouter(),
+		addr:   addr,
 	}
 	server.setupRoutes()
 	return server

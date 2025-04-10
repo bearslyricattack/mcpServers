@@ -124,7 +124,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const args = request.params.arguments as { 
       name: string; 
       type: string; 
-      namespace: string 
+      namespace: string;
+      kubeconfig: string;
     };
     const { name, type, namespace } = args;
     
@@ -150,9 +151,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const args = request.params.arguments as { 
       namespace: string; 
       type?: string 
+      kubeconfig: string;
     };
     const { namespace, type } = args;
-    
     const url = `${API_BASE_URL}/list?namespace=${namespace}&type=${type || ''}`;
     const result = await httpRequest(url, { method: "GET" }, null);
     
@@ -169,6 +170,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const args = request.params.arguments as {
       name: string;
       namespace: string;
+      kubeconfig: string;
     };
     const { name, namespace } = args;
     
@@ -191,6 +193,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const args = request.params.arguments as {
       name: string;
       namespace: string;
+      kubeconfig: string;
     };
     const { name, namespace } = args;
     

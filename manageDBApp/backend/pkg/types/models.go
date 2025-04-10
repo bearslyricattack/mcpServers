@@ -10,17 +10,20 @@ type CreateDatabaseRequest struct {
 	CPURequest    string `json:"cpu_request,omitempty"`
 	MemoryRequest string `json:"memory_request,omitempty"`
 	Storage       string `json:"storage,omitempty"`
+	Kubeconfig    string `json:"kubeconfig,omitempty"`
 }
 
 type ListDatabasesRequest struct {
-	Namespace string `json:"namespace,omitempty"`
-	Type      string `json:"type,omitempty"`
+	Namespace  string `json:"namespace,omitempty"`
+	Type       string `json:"type,omitempty"`
+	Kubeconfig string `json:"kubeconfig,omitempty"`
 }
 
 type DeleteDatabaseRequest struct {
-	Name      string `json:"name"`
-	Namespace string `json:"namespace,omitempty"`
-	Token     string `json:"token,omitempty"`
+	Name       string `json:"name"`
+	Namespace  string `json:"namespace,omitempty"`
+	Token      string `json:"token,omitempty"`
+	Kubeconfig string `json:"kubeconfig,omitempty"`
 }
 
 type Response struct {
@@ -46,8 +49,9 @@ type DBClusterInfo struct {
 }
 
 type GetDatabasesRequest struct {
-	Namespace string `json:"namespace,omitempty"`
-	Database  string `json:"database,omitempty"`
+	Namespace  string `json:"namespace,omitempty"`
+	Database   string `json:"database,omitempty"`
+	Kubeconfig string `json:"kubeconfig,omitempty"`
 }
 
 type DatabasesResponse struct {

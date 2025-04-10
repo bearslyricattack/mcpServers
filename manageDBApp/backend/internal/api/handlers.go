@@ -6,6 +6,7 @@ import (
 	"fmt"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"log"
+	"mcp-db/internal/k8s"
 	"mcp-db/pkg/types"
 	"net/http"
 	"strings"
@@ -17,7 +18,6 @@ func (s *Server) CreateDatabase(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusBadRequest, "Invalid request format")
 		return
 	}
-
 	if req.Name == "" {
 		respondWithError(w, http.StatusBadRequest, "Database name is required")
 		return
@@ -43,6 +43,16 @@ func (s *Server) CreateDatabase(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Storage == "" {
 		req.Storage = "3Gi"
+	}
+	if req.Kubeconfig == "" {
+		respondWithError(w, http.StatusBadRequest, "Database name is required")
+		return
+	}
+	var err error
+	s.k8sClient, err = k8s.NewClient(req.Kubeconfig)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "kubectl is error: "+err.Error())
+		return
 	}
 	ctx := context.Background()
 	if err := s.k8sClient.CreateDatabaseCluster(ctx, &req); err != nil {
@@ -70,6 +80,16 @@ func (s *Server) ListDatabases(w http.ResponseWriter, r *http.Request) {
 	if req.Namespace == "" {
 		respondWithError(w, http.StatusBadRequest, "Not Found namespace")
 	}
+	if req.Kubeconfig == "" {
+		respondWithError(w, http.StatusBadRequest, "Database name is required")
+		return
+	}
+	var err error
+	s.k8sClient, err = k8s.NewClient(req.Kubeconfig)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "kubectl is error: "+err.Error())
+		return
+	}
 	clusters, err := s.k8sClient.ListDatabaseClusters(req.Namespace)
 	if err != nil {
 		log.Printf("Failed to get database clusters: %v", err)
@@ -92,19 +112,25 @@ func (s *Server) DeleteDatabase(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		// 提取DELETE方法的查询参数
 		req.Name = r.URL.Query().Get("name")
 		req.Namespace = r.URL.Query().Get("namespace")
 		req.Token = r.URL.Query().Get("token")
 	}
-
-	// 验证请求
 	if req.Name == "" {
 		respondWithError(w, http.StatusBadRequest, "Database name is required")
 		return
 	}
-
 	ctx := context.Background()
+	if req.Kubeconfig == "" {
+		respondWithError(w, http.StatusBadRequest, "Database name is required")
+		return
+	}
+	var err error
+	s.k8sClient, err = k8s.NewClient(req.Kubeconfig)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "kubectl is error: "+err.Error())
+		return
+	}
 	if err := s.k8sClient.DeleteDatabaseCluster(ctx, req.Name, req.Namespace); err != nil {
 		log.Printf("Failed to delete database cluster: %v", err)
 		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to delete database cluster: %v", err))
@@ -133,6 +159,16 @@ func (s *Server) GetDatabaseConn(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Database == "" {
 		respondWithError(w, http.StatusBadRequest, "Not Found database")
+	}
+	if req.Kubeconfig == "" {
+		respondWithError(w, http.StatusBadRequest, "Database name is required")
+		return
+	}
+	var err error
+	s.k8sClient, err = k8s.NewClient(req.Kubeconfig)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "kubectl is error: "+err.Error())
+		return
 	}
 	secretName := fmt.Sprintf("%s-conn-credential", req.Database)
 	secret, err := s.k8sClient.ClientSet.CoreV1().Secrets(req.Namespace).Get(context.TODO(), secretName, metav1.GetOptions{})
