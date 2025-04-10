@@ -127,7 +127,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       namespace: string;
       kubeconfig: string;
     };
-    const { name, type, namespace,kubeconfig} = args;
+    const { name, type, namespace, kubeconfig } = args;
     
     const result = await httpRequest(
       `${API_BASE_URL}/create`,
@@ -135,7 +135,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         method: "POST",
         headers: { "Content-Type": "application/json" }
       },
-      JSON.stringify({ name, type, namespace,kubeconfig, })
+      JSON.stringify({ name, type, namespace, kubeconfig })
     );
     
     return {
@@ -150,12 +150,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   else if (request.params.name === "get_database_clusters") {
     const args = request.params.arguments as { 
       namespace: string; 
-      type?: string 
+      type?: string;
       kubeconfig: string;
     };
-    const { namespace, type,kubeconfig } = args;
-    const url = `${API_BASE_URL}/list?namespace=${namespace}&type=${type || ''}&kubeconfig=${kubeconfig}`;
-    const result = await httpRequest(url, { method: "GET" }, null);
+    const { namespace, type, kubeconfig } = args;
+
+    const result = await httpRequest(
+      `${API_BASE_URL}/list`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      },
+      JSON.stringify({ namespace, type, kubeconfig })
+    );
     
     return {
       content: [
@@ -172,12 +179,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       namespace: string;
       kubeconfig: string;
     };
-    const { name, namespace } = args;
+    const { name, namespace, kubeconfig } = args;
     
     const result = await httpRequest(
-      `${API_BASE_URL}/connect?name=${name}&namespace=${namespace}&kubeconfig=${args.kubeconfig}`,
-      { method: "GET" },
-      null
+      `${API_BASE_URL}/connect`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      },
+      JSON.stringify({ name, namespace, kubeconfig })
     );
     
     return {
@@ -195,7 +205,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       namespace: string;
       kubeconfig: string;
     };
-    const { name, namespace,kubeconfig} = args;
+    const { name, namespace, kubeconfig } = args;
     
     const result = await httpRequest(
       `${API_BASE_URL}/delete`,
@@ -203,7 +213,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         method: "POST",
         headers: { "Content-Type": "application/json" }
       },
-      JSON.stringify({ name, namespace,kubeconfig})
+      JSON.stringify({ name, namespace, kubeconfig })
     );
     
     return {
@@ -215,6 +225,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       ]
     };
   }
+
   throw new Error(`未知工具: ${request.params.name}`);
 });
 

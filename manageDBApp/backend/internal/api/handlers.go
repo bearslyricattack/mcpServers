@@ -69,20 +69,15 @@ func (s *Server) CreateDatabase(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) ListDatabases(w http.ResponseWriter, r *http.Request) {
 	var req types.ListDatabasesRequest
-	if r.Method == http.MethodPost {
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			respondWithError(w, http.StatusBadRequest, "Invalid request format")
-			return
-		}
-	} else {
-		req.Namespace = r.URL.Query().Get("namespace")
-		req.Type = r.URL.Query().Get("type")
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request format")
+		return
 	}
 	if req.Namespace == "" {
 		respondWithError(w, http.StatusBadRequest, "Not Found namespace")
 	}
 	if req.Kubeconfig == "" {
-		respondWithError(w, http.StatusBadRequest, "Database name is required")
+		respondWithError(w, http.StatusBadRequest, "Kubeconfig is required")
 		return
 	}
 	var err error

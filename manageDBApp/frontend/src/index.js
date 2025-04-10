@@ -121,7 +121,7 @@ server.setRequestHandler(types_js_1.CallToolRequestSchema, (request) => __awaite
         const result = yield httpRequest(`${API_BASE_URL}/create`, {
             method: "POST",
             headers: { "Content-Type": "application/json" }
-        }, JSON.stringify({ name, type, namespace, kubeconfig, }));
+        }, JSON.stringify({ name, type, namespace, kubeconfig }));
         return {
             content: [
                 {
@@ -134,8 +134,10 @@ server.setRequestHandler(types_js_1.CallToolRequestSchema, (request) => __awaite
     else if (request.params.name === "get_database_clusters") {
         const args = request.params.arguments;
         const { namespace, type, kubeconfig } = args;
-        const url = `${API_BASE_URL}/list?namespace=${namespace}&type=${type || ''}&kubeconfig=${kubeconfig}`;
-        const result = yield httpRequest(url, { method: "GET" }, null);
+        const result = yield httpRequest(`${API_BASE_URL}/list`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" }
+        }, JSON.stringify({ namespace, type, kubeconfig }));
         return {
             content: [
                 {
@@ -147,8 +149,11 @@ server.setRequestHandler(types_js_1.CallToolRequestSchema, (request) => __awaite
     }
     else if (request.params.name === "get_database_connection") {
         const args = request.params.arguments;
-        const { name, namespace } = args;
-        const result = yield httpRequest(`${API_BASE_URL}/connect?name=${name}&namespace=${namespace}&kubeconfig=${args.kubeconfig}`, { method: "GET" }, null);
+        const { name, namespace, kubeconfig } = args;
+        const result = yield httpRequest(`${API_BASE_URL}/connect`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" }
+        }, JSON.stringify({ name, namespace, kubeconfig }));
         return {
             content: [
                 {

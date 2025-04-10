@@ -23,10 +23,10 @@ func NewServer(addr string) *Server {
 
 func (s *Server) setupRoutes() {
 	api := s.router.PathPrefix("/databases").Subrouter()
-	api.HandleFunc("/list", s.ListDatabases).Methods(http.MethodGet, http.MethodPost)
+	api.HandleFunc("/list", s.ListDatabases).Methods(http.MethodPost)
 	api.HandleFunc("/create", s.CreateDatabase).Methods(http.MethodPost)
-	api.HandleFunc("/delete", s.DeleteDatabase).Methods(http.MethodDelete, http.MethodPost)
-	api.HandleFunc("/connect", s.GetDatabaseConn).Methods(http.MethodGet)
+	api.HandleFunc("/delete", s.DeleteDatabase).Methods(http.MethodPost)
+	api.HandleFunc("/connect", s.GetDatabaseConn).Methods(http.MethodPost)
 }
 
 func (s *Server) Start() error {
