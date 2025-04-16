@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: service-manager-database
+  name: service-manager-database-deployment
+  namespace: sealos
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: service-manager-database
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: service-manager-database
+    spec:
+      containers:
+        - command:
+            - /manager
+          args:
+            - "-port=8429"
+          image: bearslyricattack/service-managerdatabase:latest
+          imagePullPolicy: Always
+          name: service-vlogs
+          ports:
+            - containerPort: 8429
+              protocol: TCP
+          resources:
+            limits:
+              cpu: 500m
+              memory: 1Gi
+            requests:
+              cpu: 5m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: service-manager-database
+  name: service-manager-database
+  namespace: sealos
+spec:
+  type: NodePort
+  ports:
+    - name: http
+      port: 8429
+      protocol: TCP
+      targetPort: 8429
+  selector:
+    app: service-manager-database
