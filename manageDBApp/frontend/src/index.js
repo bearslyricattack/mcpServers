@@ -52,11 +52,11 @@ const server = new index_js_1.Server({
 });
 server.setRequestHandler(types_js_1.ListToolsRequestSchema, () => __awaiter(void 0, void 0, void 0, function* () {
     const commonProperties = {
-        name: { type: "string", description: "数据库集群名称" },
-        namespace: { type: "string", description: "部署的命名空间", default: "default" },
+        name: { type: "string", description: "Database cluster name" },
+        namespace: { type: "string", description: "Deployment namespace", default: "default" },
         type: {
             type: "string",
-            description: "数据库类型",
+            description: "Database type",
             enum: ["postgresql", "mysql", "redis", "mongodb", "kafka", "milvus"],
             default: "postgresql"
         }
@@ -65,7 +65,7 @@ server.setRequestHandler(types_js_1.ListToolsRequestSchema, () => __awaiter(void
         tools: [
             {
                 name: "create_database",
-                description: "创建新的数据库集群。",
+                description: "Create a new database cluster. Only supports MySQL，PostgreSQL，MongoDB and Redis.",
                 inputSchema: {
                     type: "object",
                     properties: Object.assign({}, commonProperties),
@@ -74,14 +74,14 @@ server.setRequestHandler(types_js_1.ListToolsRequestSchema, () => __awaiter(void
             },
             {
                 name: "get_database_clusters",
-                description: "获取指定命名空间中的数据库集群列表。",
+                description: "Get a list of database clusters in the specified namespace.",
                 inputSchema: {
                     type: "object",
                     properties: {
-                        namespace: { type: "string", description: "要查询的命名空间", default: "default" },
+                        namespace: { type: "string", description: "Namespace to query", default: "default" },
                         type: {
                             type: "string",
-                            description: "数据库类型（可选）",
+                            description: "Database type (optional)",
                             enum: ["postgresql", "mysql", "redis"]
                         }
                     }
@@ -89,24 +89,24 @@ server.setRequestHandler(types_js_1.ListToolsRequestSchema, () => __awaiter(void
             },
             {
                 name: "get_database_connection",
-                description: "获取指定数据库集群的连接信息。",
+                description: "Get the connection information for the specified database cluster.",
                 inputSchema: {
                     type: "object",
                     properties: {
-                        name: { type: "string", description: "数据库集群名称" },
-                        namespace: { type: "string", description: "部署的命名空间", default: "default" }
+                        name: { type: "string", description: "Database cluster name" },
+                        namespace: { type: "string", description: "Deployment namespace", default: "default" }
                     },
                     required: ["name", "namespace"]
                 }
             },
             {
                 name: "delete_database",
-                description: "删除指定的数据库集群。",
+                description: "Delete the specified database cluster.",
                 inputSchema: {
                     type: "object",
                     properties: {
-                        name: { type: "string", description: "数据库集群名称" },
-                        namespace: { type: "string", description: "部署的命名空间", default: "default" }
+                        name: { type: "string", description: "Database cluster name" },
+                        namespace: { type: "string", description: "Deployment namespace", default: "default" }
                     },
                     required: ["name", "namespace"]
                 }
@@ -179,22 +179,22 @@ server.setRequestHandler(types_js_1.CallToolRequestSchema, (request) => __awaite
             ]
         };
     }
-    throw new Error(`未知工具: ${request.params.name}`);
+    throw new Error(`Unknown tool: ${request.params.name}`);
 }));
 function runServer() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            console.error("数据库管理服务器启动中...");
+            console.error("Database management server starting...");
             const transport = new stdio_js_1.StdioServerTransport();
             yield server.connect(transport);
-            console.error("服务器已连接，等待请求...");
+            console.error("Server connected, waiting for requests...");
         }
         catch (err) {
-            console.error("服务器启动错误:", err);
+            console.error("Server startup error:", err);
             process.exit(1);
         }
     });
 }
-// 使用直接调用方式启动服务器
-// 避免使用 import.meta.url，因为它在编译到 CommonJS 时不支持
+// Start the server directly
+// Avoid using import.meta.url since it is not supported when compiled to CommonJS
 runServer();
