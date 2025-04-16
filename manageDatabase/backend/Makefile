@@ -48,7 +48,6 @@ build: clean ## Build service-hub binary.
 
 .PHONY: docker-build
 docker-build: build
-	mv bin/manager bin/service-vlogs-${TARGETARCH}
 	mv bin/manager bin/service-managerdatabase-${TARGETARCH}
 	docker build -t $(IMG) .
 
