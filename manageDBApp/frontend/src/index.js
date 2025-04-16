@@ -17,7 +17,7 @@ const index_js_1 = require("@modelcontextprotocol/sdk/server/index.js");
 const stdio_js_1 = require("@modelcontextprotocol/sdk/server/stdio.js");
 const types_js_1 = require("@modelcontextprotocol/sdk/types.js");
 const http_1 = __importDefault(require("http"));
-const API_BASE_URL = "http://192.168.10.33:31853/databases";
+const API_BASE_URL = "https://localhost:8080/databases";
 function httpRequest(url, options, data = null) {
     return new Promise((resolve, reject) => {
         const req = http_1.default.request(url, options, (res) => {
@@ -57,8 +57,13 @@ server.setRequestHandler(types_js_1.ListToolsRequestSchema, () => __awaiter(void
         type: {
             type: "string",
             description: "Database type",
-            enum: ["postgresql", "mysql", "redis", "mongodb", "kafka", "milvus"],
+            enum: ["postgresql", "mysql", "redis", "mongodb"],
             default: "postgresql"
+        },
+        kubeconfig: {
+            type: "string",
+            description: "user kubeconfig.",
+            default: ""
         }
     };
     return {
@@ -69,7 +74,7 @@ server.setRequestHandler(types_js_1.ListToolsRequestSchema, () => __awaiter(void
                 inputSchema: {
                     type: "object",
                     properties: Object.assign({}, commonProperties),
-                    required: ["name", "type", "namespace"]
+                    required: ["name", "type", "namespace", "kubeconfig"]
                 }
             },
             {
@@ -79,12 +84,9 @@ server.setRequestHandler(types_js_1.ListToolsRequestSchema, () => __awaiter(void
                     type: "object",
                     properties: {
                         namespace: { type: "string", description: "Namespace to query", default: "default" },
-                        type: {
-                            type: "string",
-                            description: "Database type (optional)",
-                            enum: ["postgresql", "mysql", "redis"]
-                        }
-                    }
+                        kubeconfig: { type: "string", description: "user kubeconfig.", default: "" }
+                    },
+                    required: ["kubeconfig", "namespace"]
                 }
             },
             {
@@ -94,9 +96,10 @@ server.setRequestHandler(types_js_1.ListToolsRequestSchema, () => __awaiter(void
                     type: "object",
                     properties: {
                         name: { type: "string", description: "Database cluster name" },
-                        namespace: { type: "string", description: "Deployment namespace", default: "default" }
+                        namespace: { type: "string", description: "Deployment namespace", default: "default" },
+                        kubeconfig: { type: "string", description: "user kubeconfig.", default: "" }
                     },
-                    required: ["name", "namespace"]
+                    required: ["name", "namespace", "kubeconfig"]
                 }
             },
             {
@@ -106,9 +109,10 @@ server.setRequestHandler(types_js_1.ListToolsRequestSchema, () => __awaiter(void
                     type: "object",
                     properties: {
                         name: { type: "string", description: "Database cluster name" },
-                        namespace: { type: "string", description: "Deployment namespace", default: "default" }
+                        namespace: { type: "string", description: "Deployment namespace", default: "default" },
+                        kubeconfig: { type: "string", description: "user kubeconfig.", default: "" }
                     },
-                    required: ["name", "namespace"]
+                    required: ["name", "namespace", "kubeconfig"]
                 }
             }
         ],
@@ -133,11 +137,11 @@ server.setRequestHandler(types_js_1.CallToolRequestSchema, (request) => __awaite
     }
     else if (request.params.name === "get_database_clusters") {
         const args = request.params.arguments;
-        const { namespace, type, kubeconfig } = args;
+        const { namespace, kubeconfig } = args;
         const result = yield httpRequest(`${API_BASE_URL}/list`, {
             method: "POST",
             headers: { "Content-Type": "application/json" }
-        }, JSON.stringify({ namespace, type, kubeconfig }));
+        }, JSON.stringify({ namespace, kubeconfig }));
         return {
             content: [
                 {
