@@ -1,6 +1,6 @@
 FROM gcr.io/distroless/static:nonroot
 ARG TARGETARCH
-COPY bin/managedatabase-$TARGETARCH /manager
+COPY bin/service-managedatabase-$TARGETARCH /manager
 EXPOSE 8428
 USER 65532:65532
 
