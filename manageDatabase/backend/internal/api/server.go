@@ -24,6 +24,8 @@ func (s *Server) setupRoutes() {
 	api := s.router.PathPrefix("/databases").Subrouter()
 	api.HandleFunc("/list", s.ListDatabasesHandler).Methods(http.MethodPost)
 	api.HandleFunc("/create", s.CreateDatabaseHandler).Methods(http.MethodPost)
+	api.HandleFunc("/delete", s.DeleteDatabaseHandler).Methods(http.MethodPost)
+	api.HandleFunc("/exec", s.ExecSQLHandler).Methods(http.MethodPost)
 }
 
 func (s *Server) Start() error {

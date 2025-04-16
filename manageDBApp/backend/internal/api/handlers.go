@@ -102,16 +102,9 @@ func (s *Server) ListDatabases(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) DeleteDatabase(w http.ResponseWriter, r *http.Request) {
 	var req types.DeleteDatabaseRequest
-
-	if r.Method == http.MethodPost {
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			respondWithError(w, http.StatusBadRequest, "Invalid request format")
-			return
-		}
-	} else {
-		req.Name = r.URL.Query().Get("name")
-		req.Namespace = r.URL.Query().Get("namespace")
-		req.Token = r.URL.Query().Get("token")
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request format")
+		return
 	}
 	if req.Name == "" {
 		respondWithError(w, http.StatusBadRequest, "Database name is required")
@@ -119,13 +112,13 @@ func (s *Server) DeleteDatabase(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := context.Background()
 	if req.Kubeconfig == "" {
-		respondWithError(w, http.StatusBadRequest, "Database name is required")
+		respondWithError(w, http.StatusBadRequest, "KubeConfig is required")
 		return
 	}
 	var err error
 	s.k8sClient, err = k8s.NewClient(req.Kubeconfig)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "kubectl is error: "+err.Error())
+		respondWithError(w, http.StatusBadRequest, "KubeConfig is error: "+err.Error())
 		return
 	}
 	if err := s.k8sClient.DeleteDatabaseCluster(ctx, req.Name, req.Namespace); err != nil {
@@ -142,29 +135,24 @@ func (s *Server) DeleteDatabase(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) GetDatabaseConn(w http.ResponseWriter, r *http.Request) {
 	var req types.GetDatabasesRequest
-	if r.Method == http.MethodPost {
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			respondWithError(w, http.StatusBadRequest, "Invalid request format")
-			return
-		}
-	} else {
-		req.Namespace = r.URL.Query().Get("namespace")
-		req.Database = r.URL.Query().Get("name")
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request format")
+		return
 	}
 	if req.Namespace == "" {
-		respondWithError(w, http.StatusBadRequest, "Not Found namespace")
+		respondWithError(w, http.StatusBadRequest, "Namespace is required")
 	}
 	if req.Database == "" {
-		respondWithError(w, http.StatusBadRequest, "Not Found database")
+		respondWithError(w, http.StatusBadRequest, "Database name is required")
 	}
 	if req.Kubeconfig == "" {
-		respondWithError(w, http.StatusBadRequest, "Database name is required")
+		respondWithError(w, http.StatusBadRequest, "KubeConfig is required")
 		return
 	}
 	var err error
 	s.k8sClient, err = k8s.NewClient(req.Kubeconfig)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "kubectl is error: "+err.Error())
+		respondWithError(w, http.StatusBadRequest, "KubeConfig is error: "+err.Error())
 		return
 	}
 	secretName := fmt.Sprintf("%s-conn-credential", req.Database)

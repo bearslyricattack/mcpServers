@@ -1,4 +1,5 @@
-IMG ?= ghcr.io/labring/sealos-vlogs-service:latest
+#IMG ?= ghcr.io/labring/service-managedatabase:latest
+IMG ?= bearslyricattack/service-managedatabase:latest
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -48,6 +49,7 @@ build: clean ## Build service-hub binary.
 .PHONY: docker-build
 docker-build: build
 	mv bin/manager bin/service-vlogs-${TARGETARCH}
+	mv bin/manager bin/service-managerdatabase-${TARGETARCH}
 	docker build -t $(IMG) .
 
 .PHONY: docker-push
