@@ -18,6 +18,7 @@ const stdio_js_1 = require("@modelcontextprotocol/sdk/server/stdio.js");
 const types_js_1 = require("@modelcontextprotocol/sdk/types.js");
 const http_1 = __importDefault(require("http"));
 const API_BASE_URL = "http://localhost:8080/databases";
+// Generic HTTP request function
 function httpRequest(url, options, data = null) {
     return new Promise((resolve, reject) => {
         const req = http_1.default.request(url, options, (res) => {
@@ -30,7 +31,7 @@ function httpRequest(url, options, data = null) {
                     resolve(JSON.parse(body));
                 }
                 catch (error) {
-                    // 如果JSON解析失败，返回原始字符串作为对象
+                    // If JSON parsing fails, return raw string as object
                     resolve({ message: body });
                 }
             });
@@ -51,16 +52,18 @@ const server = new index_js_1.Server({
         tools: {},
     },
 });
+// Tool list handler
 server.setRequestHandler(types_js_1.ListToolsRequestSchema, () => __awaiter(void 0, void 0, void 0, function* () {
     const commonProperties = {
-        dsn: { type: "string", description: "数据库连接的信息", default: "default" },
-        name: { type: "string", description: "创建的database的名称", default: "default" }
+        dsn: { type: "string", description: "Database connection information", default: "default" },
+        name: { type: "string", description: "Name of the database to manage", default: "default" },
+        type: { type: "string", description: "Type of the database,Only supports MySQL and PostgreSQL." }
     };
     return {
         tools: [
             {
                 name: "create_database",
-                description: "根据连接信息,连接到数据库,创建新的数据库中的database。",
+                description: "Connect to the database using the connection info and create a new database. Only supports MySQL and PostgreSQL.",
                 inputSchema: {
                     type: "object",
                     properties: Object.assign({}, commonProperties),
@@ -69,24 +72,47 @@ server.setRequestHandler(types_js_1.ListToolsRequestSchema, () => __awaiter(void
             },
             {
                 name: "get_databases",
-                description: "根据连接信息,连接到数据库,获取指定数据库中的database集群列表。",
+                description: "Connect to the database using the connection info and retrieve the list of databases in the cluster. Only supports MySQL and PostgreSQL.",
                 inputSchema: {
                     type: "object",
                     properties: Object.assign({}, commonProperties),
                     required: ["dsn"]
                 }
             },
+            {
+                name: "delete_database",
+                description: "Connect to the database using the connection info and delete the specified database. Only supports MySQL and PostgreSQL.",
+                inputSchema: {
+                    type: "object",
+                    properties: Object.assign({}, commonProperties),
+                    required: ["dsn", "name"]
+                }
+            },
+            {
+                name: "exec_sql",
+                description: "Execute a custom SQL statement on the connected database. Only supports MySQL and PostgreSQL.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        dsn: { type: "string", description: "Database connection information", default: "default" },
+                        sql: { type: "string", description: "Custom SQL statement to execute", default: "SELECT 1" },
+                        type: { type: "string", description: "Type of the database,Only supports MySQL and PostgreSQL." }
+                    },
+                    required: ["dsn", "sql"]
+                }
+            }
         ],
     };
 }));
+// Tool call handler
 server.setRequestHandler(types_js_1.CallToolRequestSchema, (request) => __awaiter(void 0, void 0, void 0, function* () {
     if (request.params.name === "create_database") {
         const args = request.params.arguments;
-        const { dsn, name } = args;
+        const { dsn, name, type } = args;
         const result = yield httpRequest(`${API_BASE_URL}/create`, {
             method: "POST",
             headers: { "Content-Type": "application/json" }
-        }, JSON.stringify({ dsn, name }));
+        }, JSON.stringify({ dsn, name, type }));
         return {
             content: [
                 {
@@ -98,11 +124,11 @@ server.setRequestHandler(types_js_1.CallToolRequestSchema, (request) => __awaite
     }
     else if (request.params.name === "get_databases") {
         const args = request.params.arguments;
-        const { dsn } = args;
+        const { dsn, type } = args;
         const result = yield httpRequest(`${API_BASE_URL}/list`, {
             method: "POST",
             headers: { "Content-Type": "application/json" }
-        }, JSON.stringify({ dsn }));
+        }, JSON.stringify({ dsn, type }));
         return {
             content: [
                 {
@@ -112,18 +138,51 @@ server.setRequestHandler(types_js_1.CallToolRequestSchema, (request) => __awaite
             ]
         };
     }
-    throw new Error(`未知工具: ${request.params.name}`);
+    else if (request.params.name === "delete_database") {
+        const args = request.params.arguments;
+        const { dsn, type, name } = args;
+        const result = yield httpRequest(`${API_BASE_URL}/delete`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" }
+        }, JSON.stringify({ dsn, type, name }));
+        return {
+            content: [
+                {
+                    type: "text",
+                    text: JSON.stringify(result, null, 2)
+                }
+            ]
+        };
+    }
+    else if (request.params.name === "exec_sql") {
+        const args = request.params.arguments;
+        const { dsn, type, sql } = args;
+        const result = yield httpRequest(`${API_BASE_URL}/exec`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" }
+        }, JSON.stringify({ dsn, type, sql }));
+        return {
+            content: [
+                {
+                    type: "text",
+                    text: JSON.stringify(result, null, 2)
+                }
+            ]
+        };
+    }
+    throw new Error(`Unknown tool: ${request.params.name}`);
 }));
+// Server startup
 function runServer() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            console.error("数据库管理服务器启动中...");
+            console.error("Database management server is starting...");
             const transport = new stdio_js_1.StdioServerTransport();
             yield server.connect(transport);
-            console.error("服务器已连接，等待请求...");
+            console.error("Server connected and awaiting requests...");
         }
         catch (err) {
-            console.error("服务器启动错误:", err);
+            console.error("Server startup error:", err);
             process.exit(1);
         }
     });
