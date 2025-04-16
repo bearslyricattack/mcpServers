@@ -57,7 +57,7 @@ var DatabaseConfigs = map[string]struct {
 
 var DefaultVersions = map[string]string{
 	"postgresql": "14.8.0",
-	"mysql":      "8.0.30-1",
+	"mysql":      "8.0.30",
 	"redis":      "7.0.6",
 	"mongodb":    "6.0",
 	"kafka":      "3.3.2",
@@ -90,7 +90,7 @@ func (c *Client) CreateDatabaseCluster(ctx context.Context, req *types.CreateDat
 	if err := c.CreateRoleBinding(ctx, req.Name, req.Namespace); err != nil {
 		return fmt.Errorf("failed to create RoleBinding: %w", err)
 	}
-
+	//waiting the sa create.
 	time.Sleep(1 * time.Second)
 	cluster := &unstructured.Unstructured{
 		Object: map[string]interface{}{

@@ -136,13 +136,13 @@ func (s *Server) DeleteDatabase(w http.ResponseWriter, r *http.Request) {
 func (s *Server) GetDatabaseConn(w http.ResponseWriter, r *http.Request) {
 	var req types.GetDatabasesRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid request format")
+		respondWithError(w, http.StatusBadRequest, fmt.Sprintf("Invalid request format: %s", err.Error()))
 		return
 	}
 	if req.Namespace == "" {
 		respondWithError(w, http.StatusBadRequest, "Namespace is required")
 	}
-	if req.Database == "" {
+	if req.Name == "" {
 		respondWithError(w, http.StatusBadRequest, "Database name is required")
 	}
 	if req.Kubeconfig == "" {
@@ -155,10 +155,12 @@ func (s *Server) GetDatabaseConn(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusBadRequest, "KubeConfig is error: "+err.Error())
 		return
 	}
-	secretName := fmt.Sprintf("%s-conn-credential", req.Database)
+	secretName := fmt.Sprintf("%s-conn-credential", req.Name)
 	secret, err := s.k8sClient.ClientSet.CoreV1().Secrets(req.Namespace).Get(context.TODO(), secretName, metav1.GetOptions{})
 	if err != nil {
-		log.Fatalf("Failed to get Secret: %v", err)
+		respondWithError(w, http.StatusBadRequest, "database is not exist.")
+		log.Printf("Failed to get database connection secret: %v", err)
+		return
 	}
 
 	var res types.DatabasesResponse

@@ -50,7 +50,7 @@ type DBClusterInfo struct {
 
 type GetDatabasesRequest struct {
 	Namespace  string `json:"namespace,omitempty"`
-	Database   string `json:"database,omitempty"`
+	Name       string `json:"name,omitempty"`
 	Kubeconfig string `json:"kubeconfig,omitempty"`
 }
 
