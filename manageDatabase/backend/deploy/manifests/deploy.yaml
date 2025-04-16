@@ -22,7 +22,7 @@ spec:
             - /manager
           args:
             - "-port=8429"
-          image: bearslyricattack/service-managerdatabase:latest
+          image: bearslyricattack/service-managedatabase:latest
           imagePullPolicy: Always
           name: service-vlogs
           ports:
