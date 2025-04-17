@@ -17,7 +17,7 @@ const index_js_1 = require("@modelcontextprotocol/sdk/server/index.js");
 const stdio_js_1 = require("@modelcontextprotocol/sdk/server/stdio.js");
 const types_js_1 = require("@modelcontextprotocol/sdk/types.js");
 const http_1 = __importDefault(require("http"));
-const API_BASE_URL = "https://localhost:8080/databases";
+const API_BASE_URL = "http://localhost:8080/databases";
 function httpRequest(url, options, data = null) {
     return new Promise((resolve, reject) => {
         const req = http_1.default.request(url, options, (res) => {
