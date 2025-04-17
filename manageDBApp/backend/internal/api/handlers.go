@@ -9,7 +9,17 @@ import (
 	"mcp-db/internal/k8s"
 	"mcp-db/pkg/types"
 	"net/http"
+	"strconv"
 	"strings"
+)
+
+const (
+	DefaultCPULimit    = "1000m"
+	DefaultMemoryLimit = "1024Mi"
+	DefaultStorage     = "3Gi"
+
+	CPURequestRatio    = 10
+	MemoryRequestRatio = 10
 )
 
 func (s *Server) CreateDatabase(w http.ResponseWriter, r *http.Request) {
@@ -28,21 +38,21 @@ func (s *Server) CreateDatabase(w http.ResponseWriter, r *http.Request) {
 	if req.Namespace == "" {
 		respondWithError(w, http.StatusBadRequest, "Namespace is required")
 	}
-
 	if req.CPULimit == "" {
-		req.CPULimit = "1000m"
+		req.CPULimit = DefaultCPULimit
 	}
 	if req.MemoryLimit == "" {
-		req.MemoryLimit = "1024Mi"
-	}
-	if req.CPURequest == "" {
-		req.CPURequest = "100m"
-	}
-	if req.MemoryRequest == "" {
-		req.MemoryRequest = "102Mi"
+		req.MemoryLimit = DefaultMemoryLimit
 	}
 	if req.Storage == "" {
-		req.Storage = "3Gi"
+		req.Storage = DefaultStorage
+	}
+	// Request values derived from limit
+	if req.CPURequest == "" {
+		req.CPURequest = ratioToRequest(req.CPULimit, CPURequestRatio)
+	}
+	if req.MemoryRequest == "" {
+		req.MemoryRequest = ratioToRequest(req.MemoryLimit, MemoryRequestRatio)
 	}
 	if req.Kubeconfig == "" {
 		respondWithError(w, http.StatusBadRequest, "Kubeconfig is required")
@@ -203,4 +213,32 @@ func respondWithError(w http.ResponseWriter, code int, message string) {
 		Success: false,
 		Message: message,
 	})
+}
+
+// ratioToRequest converts limit string like "1000m" or "1024Mi" to a reduced value by ratio
+func ratioToRequest(limit string, ratio int) string {
+	unit := ""
+	value := 0
+
+	// Handle CPU (m) and Memory (Mi, Gi)
+	if strings.HasSuffix(limit, "m") {
+		unit = "m"
+		value, _ = strconv.Atoi(strings.TrimSuffix(limit, "m"))
+	} else if strings.HasSuffix(limit, "Mi") {
+		unit = "Mi"
+		value, _ = strconv.Atoi(strings.TrimSuffix(limit, "Mi"))
+	} else if strings.HasSuffix(limit, "Gi") {
+		unit = "Gi"
+		value, _ = strconv.Atoi(strings.TrimSuffix(limit, "Gi"))
+	} else {
+		// Unknown unit, fallback
+		return limit
+	}
+
+	request := value / ratio
+	if request == 0 {
+		request = 1 // avoid zero request
+	}
+
+	return fmt.Sprintf("%d%s", request, unit)
 }

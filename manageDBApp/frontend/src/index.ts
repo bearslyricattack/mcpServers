@@ -51,22 +51,6 @@ const server = new Server(
 );
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
-  const commonProperties = {
-    name: { type: "string", description: "Database cluster name" },
-    namespace: { type: "string", description: "Deployment namespace", default: "default" },
-    type: {
-      type: "string",
-      description: "Database type",
-      enum: ["postgresql", "mysql", "redis", "mongodb"],
-      default: "postgresql"
-    },
-    kubeconfig:{
-      type: "string",
-      description: "user kubeconfig.",
-      default: ""
-    }
-  };
-
   return {
     tools: [
       {
@@ -75,9 +59,16 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         inputSchema: {
           type: "object",
           properties: {
-            ...commonProperties
+            name: { type: "string", description: "Database cluster name" },
+            namespace: { type: "string", description: "Deployment namespace"},
+            kubeconfig: {type: "string", description: "user kubeconfig."},
+            type:{type:"string",description:"Database type,postgresql,mysql,redis,mongodb",default:"mysql"},
+            cpu:  {type: "string",description:"Database cpu request,format is xx m",default: "1000m"},
+            memory: {type:"string",description:"Database memory request,format is xx Mi",default: "1024Mi"},
+            storage: {type:"string",description:"Database storage request,format is xx Gi",default:"3Gi"},
+            version: {type:"string",description:"Database version"}
           },
-          required: ["name", "type", "namespace","kubeconfig"]
+          required: ["name", "namespace","kubeconfig"]
         }
       },
       {
@@ -127,19 +118,24 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   if (request.params.name === "create_database") {
     const args = request.params.arguments as {
       name: string;
-      type: string;
       namespace: string;
       kubeconfig: string;
+      type?: string;
+      cpu?: string;
+      memory?: string;
+      storage?: string;
+      version?: string;
     };
-    const { name, type, namespace, kubeconfig } = args;
-
+    const body = Object.fromEntries(
+        Object.entries(args).filter(([_, v]) => v !== undefined)
+    );
     const result = await httpRequest(
         `${API_BASE_URL}/create`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" }
         },
-        JSON.stringify({ name, type, namespace, kubeconfig })
+        JSON.stringify(body)
     );
 
     return {

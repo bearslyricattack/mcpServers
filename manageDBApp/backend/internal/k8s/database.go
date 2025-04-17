@@ -43,16 +43,6 @@ var DatabaseConfigs = map[string]struct {
 		Version:    "mongodb-%s",
 		Component:  "mongodb",
 	},
-	"kafka": {
-		Definition: "kafka",
-		Version:    "kafka-%s",
-		Component:  "kafka",
-	},
-	"milvus": {
-		Definition: "milvus",
-		Version:    "milvus-%s",
-		Component:  "milvus",
-	},
 }
 
 var DefaultVersions = map[string]string{
@@ -60,8 +50,6 @@ var DefaultVersions = map[string]string{
 	"mysql":      "8.0.30",
 	"redis":      "7.0.6",
 	"mongodb":    "6.0",
-	"kafka":      "3.3.2",
-	"milvus":     "2.4.5",
 }
 
 func (c *Client) CreateDatabaseCluster(ctx context.Context, req *types.CreateDatabaseRequest) error {
