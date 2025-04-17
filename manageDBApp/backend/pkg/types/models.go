@@ -5,8 +5,8 @@ type CreateDatabaseRequest struct {
 	Type          string `json:"type"`
 	Version       string `json:"version,omitempty"`
 	Namespace     string `json:"namespace,omitempty"`
-	CPULimit      string `json:"cpu_limit,omitempty"`
-	MemoryLimit   string `json:"memory_limit,omitempty"`
+	CPULimit      string `json:"cpu,omitempty"`
+	MemoryLimit   string `json:"memory,omitempty"`
 	CPURequest    string `json:"cpu_request,omitempty"`
 	MemoryRequest string `json:"memory_request,omitempty"`
 	Storage       string `json:"storage,omitempty"`
