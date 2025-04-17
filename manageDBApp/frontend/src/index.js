@@ -51,21 +51,6 @@ const server = new index_js_1.Server({
     },
 });
 server.setRequestHandler(types_js_1.ListToolsRequestSchema, () => __awaiter(void 0, void 0, void 0, function* () {
-    const commonProperties = {
-        name: { type: "string", description: "Database cluster name" },
-        namespace: { type: "string", description: "Deployment namespace", default: "default" },
-        type: {
-            type: "string",
-            description: "Database type",
-            enum: ["postgresql", "mysql", "redis", "mongodb"],
-            default: "postgresql"
-        },
-        kubeconfig: {
-            type: "string",
-            description: "user kubeconfig.",
-            default: ""
-        }
-    };
     return {
         tools: [
             {
@@ -73,8 +58,17 @@ server.setRequestHandler(types_js_1.ListToolsRequestSchema, () => __awaiter(void
                 description: "Create a new database cluster. Only supports MySQL，PostgreSQL，MongoDB and Redis.",
                 inputSchema: {
                     type: "object",
-                    properties: Object.assign({}, commonProperties),
-                    required: ["name", "type", "namespace", "kubeconfig"]
+                    properties: {
+                        name: { type: "string", description: "Database cluster name" },
+                        namespace: { type: "string", description: "Deployment namespace" },
+                        kubeconfig: { type: "string", description: "user kubeconfig." },
+                        type: { type: "string", description: "Database type,postgresql,mysql,redis,mongodb", default: "mysql" },
+                        cpu: { type: "string", description: "Database cpu request,format is xx m", default: "1000m" },
+                        memory: { type: "string", description: "Database memory request,format is xx Mi", default: "1024Mi" },
+                        storage: { type: "string", description: "Database storage request,format is xx Gi", default: "3Gi" },
+                        version: { type: "string", description: "Database version" }
+                    },
+                    required: ["name", "namespace", "kubeconfig"]
                 }
             },
             {
@@ -121,11 +115,11 @@ server.setRequestHandler(types_js_1.ListToolsRequestSchema, () => __awaiter(void
 server.setRequestHandler(types_js_1.CallToolRequestSchema, (request) => __awaiter(void 0, void 0, void 0, function* () {
     if (request.params.name === "create_database") {
         const args = request.params.arguments;
-        const { name, type, namespace, kubeconfig } = args;
+        const body = Object.fromEntries(Object.entries(args).filter(([_, v]) => v !== undefined));
         const result = yield httpRequest(`${API_BASE_URL}/create`, {
             method: "POST",
             headers: { "Content-Type": "application/json" }
-        }, JSON.stringify({ name, type, namespace, kubeconfig }));
+        }, JSON.stringify(body));
         return {
             content: [
                 {
