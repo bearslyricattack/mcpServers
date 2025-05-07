@@ -1,246 +1,157 @@
-#!/usr/bin/env node
+import express from "express";
+import { randomUUID } from "node:crypto";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js"
+import { z } from "zod";
+import {loadConfig} from "./config.js";
+import {OpenAPIToolsParser} from "./openapi.js";
+import {executeHttpRequest} from "./httprequest.js"
 
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
-import http from "http";
+const config = loadConfig();
+console.log("Loaded configuration:", config);
+console.log(`Parsing OpenAPI spec: ${config.openApiSpec}`);
+const tools = await OpenAPIToolsParser.loadAndParseOpenAPISpec({
+  openApiSpec: config.openApiSpec
+});
 
-const API_BASE_URL = "https://jnduwblmnmrm.sealoshzh.site/databases";
+console.log(`Found ${tools.size} tools:`);
+tools.forEach((tool, id) => {
+  console.log(`Tool ID: ${id}`);
+  console.log(`Name: ${tool.name}`);
+  console.log(`Description: ${tool.description.substring(0, 100)}...`);
+  console.log('---');
+})
 
-function httpRequest(
-    url: string,
-    options: http.RequestOptions,
-    data: string | null = null
-): Promise<any> {
-  return new Promise((resolve, reject) => {
-    const req = http.request(url, options, (res) => {
-      let body = "";
-      res.on("data", (chunk) => {
-        body += chunk;
-      });
-      res.on("end", () => {
-        try {
-          resolve(JSON.parse(body));
-        } catch (error) {
-          reject(error);
-        }
-      });
-    });
-    req.on("error", (error) => reject(error));
-    if (data) {
-      req.write(data);
-    }
-    req.end();
-  });
-}
+const app = express();
+app.use(express.json());
 
-const server = new Server(
-    {
-      name: "database-creator",
-      version: "0.1.0",
-    },
-    {
-      capabilities: {
-        resources: {},
-        tools: {},
-      },
-    },
-);
+// Map to store transports by session ID
+const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {};
 
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return {
-    tools: [
-      {
-        name: "create_database",
-        description: "Create a new database cluster. Only supports MySQL，PostgreSQL，MongoDB and Redis.",
-        inputSchema: {
-          type: "object",
-          properties: {
-            name: { type: "string", description: "Database cluster name" },
-            namespace: { type: "string", description: "Deployment namespace"},
-            kubeconfig: {type: "string", description: "user kubeconfig."},
-            type:{type:"string",description:"Database type,postgresql,mysql,redis,mongodb",default:"mysql"},
-            cpu:  {type: "string",description:"Database cpu request,format is xx m",default: "1000m"},
-            memory: {type:"string",description:"Database memory request,format is xx Mi",default: "1024Mi"},
-            storage: {type:"string",description:"Database storage request,format is xx Gi",default:"3Gi"},
-            version: {type:"string",description:"Database version"}
-          },
-          required: ["name", "namespace","kubeconfig"]
-        }
-      },
-      {
-        name: "get_database_clusters",
-        description: "Get a list of database clusters in the specified namespace.",
-        inputSchema: {
-          type: "object",
-          properties: {
-            namespace: { type: "string", description: "Namespace to query", default: "default" },
-            kubeconfig:{type: "string", description: "user kubeconfig.", default: ""}
-          },
-          required: ["kubeconfig", "namespace"]
-        }
-      },
-      {
-        name: "get_database_connection",
-        description: "Get the connection information for the specified database cluster.",
-        inputSchema: {
-          type: "object",
-          properties: {
-            name: { type: "string", description: "Database cluster name" },
-            namespace: { type: "string", description: "Deployment namespace", default: "default" },
-            kubeconfig:{type: "string", description: "user kubeconfig.", default: ""}
-          },
-          required: ["name", "namespace","kubeconfig"]
-        }
-      },
-      {
-        name: "delete_database",
-        description: "Delete the specified database cluster.",
-        inputSchema: {
-          type: "object",
-          properties: {
-            name: { type: "string", description: "Database cluster name" },
-            namespace: { type: "string", description: "Deployment namespace", default: "default" },
-            kubeconfig:{type: "string", description: "user kubeconfig.", default: ""}
-          },
-          required: ["name", "namespace","kubeconfig"]
-        }
+// Handle POST requests for client-to-server communication
+app.post('/mcp', async (req, res) => {
+  // Check for existing session ID
+  const sessionId = req.headers['mcp-session-id'] as string | undefined;
+  let transport: StreamableHTTPServerTransport;
+
+  if (sessionId && transports[sessionId]) {
+    // Reuse existing transport
+    transport = transports[sessionId];
+  } else if (!sessionId && isInitializeRequest(req.body)) {
+    // New initialization request
+    transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: () => randomUUID(),
+      onsessioninitialized: (sessionId) => {
+        // Store the transport by session ID
+        transports[sessionId] = transport;
       }
-    ],
-  };
-});
+    });
 
-
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  if (request.params.name === "create_database") {
-    const args = request.params.arguments as {
-      name: string;
-      namespace: string;
-      kubeconfig: string;
-      type?: string;
-      cpu?: string;
-      memory?: string;
-      storage?: string;
-      version?: string;
+    // Clean up transport when closed
+    transport.onclose = () => {
+      if (transport.sessionId) {
+        delete transports[transport.sessionId];
+      }
     };
-    const body = Object.fromEntries(
-        Object.entries(args).filter(([_, v]) => v !== undefined)
-    );
-    const result = await httpRequest(
-        `${API_BASE_URL}/create`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" }
-        },
-        JSON.stringify(body)
-    );
+    const server = new McpServer({
+      name: "example-server",
+      version: "1.0.0"
+    });
 
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(result, null, 2)
-        }
-      ]
-    };
-  }
-  else if (request.params.name === "get_database_clusters") {
-    const args = request.params.arguments as {
-      namespace: string;
-      kubeconfig: string;
-    };
-    const { namespace,kubeconfig } = args;
-
-    const result = await httpRequest(
-        `${API_BASE_URL}/list`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" }
-        },
-        JSON.stringify({namespace,kubeconfig})
-    );
-
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(result, null, 2)
-        }
-      ]
-    };
-  }
-  else if (request.params.name === "get_database_connection") {
-    const args = request.params.arguments as {
-      name: string;
-      namespace: string;
-      kubeconfig: string;
-    };
-    const { name, namespace, kubeconfig } = args;
-
-    const result = await httpRequest(
-        `${API_BASE_URL}/connect`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" }
-        },
-        JSON.stringify({ name, namespace, kubeconfig })
-    );
-
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(result, null, 2)
-        }
-      ]
-    };
-  }
-  else if (request.params.name === "delete_database") {
-    const args = request.params.arguments as {
-      name: string;
-      namespace: string;
-      kubeconfig: string;
-    };
-    const { name, namespace, kubeconfig } = args;
-
-    const result = await httpRequest(
-        `${API_BASE_URL}/delete`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" }
-        },
-        JSON.stringify({ name, namespace, kubeconfig })
-    );
-
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(result, null, 2)
-        }
-      ]
-    };
-  }
-
-  throw new Error(`Unknown tool: ${request.params.name}`);
-});
+    tools.forEach((tool, id) => {
+      const zodProperties = convertToZodProperties(tool.inputSchema);
+      server.tool(
+          tool.name,
+          tool.description,
+          zodProperties,
+          async (params) => {
+            const createUserResult = await executeHttpRequest(
+                id,
+                tool.name,
+                params,
+                config.apiBaseUrl,
+                config.headers
+            );
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify(createUserResult)
+              }]
+            };
+          }
+      );
+    });
 
 
-async function runServer() {
-  try {
-    console.error("Database management server starting...");
-    const transport = new StdioServerTransport();
+    // Connect to the MCP server
     await server.connect(transport);
-    console.error("Server connected, waiting for requests...");
-  } catch (err) {
-    console.error("Server startup error:", err);
-    process.exit(1);
+  } else {
+    // Invalid request
+    res.status(400).json({
+      jsonrpc: '2.0',
+      error: {
+        code: -32000,
+        message: 'Bad Request: No valid session ID provided',
+      },
+      id: null,
+    });
+    return;
   }
-}
 
-// Start the server directly
-// Avoid using import.meta.url since it is not supported when compiled to CommonJS
-runServer();
+  // Handle the request
+  await transport.handleRequest(req, res, req.body);
+});
+
+// Reusable handler for GET and DELETE requests
+const handleSessionRequest = async (req: express.Request, res: express.Response) => {
+  const sessionId = req.headers['mcp-session-id'] as string | undefined;
+  if (!sessionId || !transports[sessionId]) {
+    res.status(400).send('Invalid or missing session ID');
+    return;
+  }
+
+  const transport = transports[sessionId];
+  await transport.handleRequest(req, res);
+};
+
+// Handle GET requests for server-to-client notifications via SSE
+app.get('/mcp', handleSessionRequest);
+
+// Handle DELETE requests for session termination
+app.delete('/mcp', handleSessionRequest);
+
+app.listen(3000);
+
+function convertToZodProperties(schema: {
+  type: string;
+  properties: Record<string, any>;
+  required?: string[];
+}): z.ZodRawShape {
+  const zodProperties: z.ZodRawShape = {};
+
+  // 遍历属性并转换为对应的 Zod 类型
+  for (const [key, prop] of Object.entries(schema.properties)) {
+    switch (prop.type) {
+      case 'string':
+        zodProperties[key] = z.string();
+        break;
+      case 'number':
+        zodProperties[key] = z.number();
+        break;
+      case 'boolean':
+        zodProperties[key] = z.boolean();
+        break;
+      case 'integer':
+        zodProperties[key] = z.number().int();
+      default:
+        zodProperties[key] = z.any();
+    }
+
+    if (!schema.required?.includes(key)) {
+      zodProperties[key] = zodProperties[key].optional();
+    }
+  }
+
+  return zodProperties;
+}
